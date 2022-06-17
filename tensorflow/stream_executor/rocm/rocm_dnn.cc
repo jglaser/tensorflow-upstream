@@ -24,6 +24,7 @@ limitations under the License.
 #include "third_party/eigen3/Eigen/Core"
 #include "rocm/include/miopen/miopen.h"
 #include "tensorflow/core/lib/hash/hash.h"
+#include "tensorflow/core/util/determinism.h"
 #include "tensorflow/core/util/env_var.h"
 #include "tensorflow/stream_executor/dnn.h"
 #include "tensorflow/stream_executor/gpu/gpu_activation.h"
@@ -354,6 +355,7 @@ namespace wrap {
   __macro(miopenConvolutionBackwardWeightsGetSolution)               \
   __macro(miopenConvolutionBackwardWeightsGetSolutionWorkspaceSize)  \
   __macro(miopenConvolutionBackwardWeightsCompileSolution)           \
+  __macro(miopenSetConvolutionAttribute)                             \
   __macro(miopenConvolutionBackwardWeightsImmediate)                 \
   __macro(miopenCreateCTCLossDescriptor)                             \
   __macro(miopenSetCTCLossDescriptor)                                \
@@ -418,6 +420,10 @@ uint64_t GetHashValue(miopenConvolutionDescriptor_t conv_desc) {
   std::for_each(dilation.begin(), dilation.end(), hash64Combine);
 
   return hash_value;
+}
+
+bool RequireMIOpenDeterminism() {
+  return tensorflow::OpDeterminismRequired(); 
 }
 
 // Class to implement a cache of compiled fusion plans
@@ -851,6 +857,14 @@ class ScopedConvolutionDescriptor {
     if (status != miopenStatusSuccess) {
       LOG(FATAL) << "could not set miopen convolution group count: "
                  << ToString(status);
+    }
+    
+    if (RequireMIOpenDeterminism()) {
+        status = wrap::miopenSetConvolutionAttribute(handle_, MIOPEN_CONVOLUTION_ATTRIB_DETERMINISTIC, 1);
+        if (status != miopenStatusSuccess) {
+        LOG(FATAL) << "could not set miopen convolution attribute: "
+                     << ToString(status);
+        }
     }
   }
   ~ScopedConvolutionDescriptor() {

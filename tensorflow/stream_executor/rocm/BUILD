@@ -271,6 +271,7 @@ cc_library(
         "//third_party/eigen3",
         "//tensorflow/core:lib",
         "//tensorflow/core:lib_internal",
+        "//tensorflow/core/util:determinism",
         "//tensorflow/stream_executor:dnn",
         "//tensorflow/stream_executor:event",
         "//tensorflow/stream_executor:plugin_registry",
