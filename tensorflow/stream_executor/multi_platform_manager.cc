@@ -133,12 +133,12 @@ port::StatusOr<Platform*> MultiPlatformManagerImpl::PlatformWithName(
     if(lookup.ok())
       platform = lookup.value();
     else {
-      SE_ASSIGN_OR_RETURN(platform, LookupByNameLocked("rocm"));
+      TF_ASSIGN_OR_RETURN(platform, LookupByNameLocked("rocm"));
     }
   } else {
     if(target == "cuda_only")
       target = "cuda";
-    SE_ASSIGN_OR_RETURN(platform, LookupByNameLocked(target));
+    TF_ASSIGN_OR_RETURN(platform, LookupByNameLocked(target));
   }
   if (initialize_platform && !platform->Initialized()) {
     TF_RETURN_IF_ERROR(platform->Initialize({}));
