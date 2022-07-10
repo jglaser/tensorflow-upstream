@@ -70,9 +70,7 @@ TEST_F(GpuUnrollingTest, UnrollFourTimes) {
   config.set_debug_options(debug_options);
   auto hlo_module =
       ParseAndReturnVerifiedModule(kAddModule, config).ValueOrDie();
-
-  CompileAndVerifyIr(std::move(hlo_module),
-                     R"(
+  const std::string pattern1 = R"(
 ; CHECK-LABEL: @fusion
 ; CHECK: fadd
 ; CHECK: fadd
@@ -80,7 +78,18 @@ TEST_F(GpuUnrollingTest, UnrollFourTimes) {
 ; CHECK: fadd
 ; CHECK-NOT: fadd
 ; CHECK: }
-      )",
+      )";
+
+  const std::string pattern2 = R"(
+; CHECK-LABEL: @fusion
+; CHECK: fadd <2 x float>
+; CHECK: fadd <2 x float>
+; CHECK-NOT: fadd
+; CHECK: }
+      )";
+
+  CompileAndVerifyIr(std::move(hlo_module),
+                     std::vector<std::string>{pattern1,pattern2},
                      /*match_optimized_ir=*/true);
 }
 
@@ -90,9 +99,7 @@ TEST_F(GpuUnrollingTest, UnrollDefaultTimes) {
   config.set_debug_options(GetDebugOptionsFromFlags());
   auto hlo_module =
       ParseAndReturnVerifiedModule(kAddModule, config).ValueOrDie();
-
-  CompileAndVerifyIr(std::move(hlo_module),
-                     R"(
+  const std::string pattern1 = R"(
 ; CHECK-LABEL: @fusion
 ; CHECK: load <4 x float>
 ; CHECK: fadd
@@ -102,7 +109,18 @@ TEST_F(GpuUnrollingTest, UnrollDefaultTimes) {
 ; CHECK-NOT: fadd
 ; CHECK: store <4 x float>
 ; CHECK: }
-      )",
+      )";
+
+  const std::string pattern2 = R"(
+; CHECK-LABEL: @fusion
+; CHECK: fadd <2 x float>
+; CHECK: fadd <2 x float>
+; CHECK-NOT: fadd
+; CHECK: store <4 x float>
+; CHECK: }
+      )";
+  CompileAndVerifyIr(std::move(hlo_module),
+                     std::vector<std::string>{pattern1,pattern2},
                      /*match_optimized_ir=*/true);
 }
 
@@ -122,9 +140,7 @@ TEST_F(GpuUnrollingTest, UnrollUnfusedAdd) {
     })";
   auto hlo_module =
       ParseAndReturnVerifiedModule(kUnfusedAddModule, config).ValueOrDie();
-
-  CompileAndVerifyIr(std::move(hlo_module),
-                     R"(
+  const std::string pattern1 = R"(
 ; CHECK-LABEL: @add
 ; CHECK: load <4 x float>
 ; CHECK: fadd
@@ -134,8 +150,20 @@ TEST_F(GpuUnrollingTest, UnrollUnfusedAdd) {
 ; CHECK-NOT: fadd
 ; CHECK: store <4 x float>
 ; CHECK: }
-      )",
-                     /*match_optimized_ir=*/true);
+      )";
+
+  const std::string pattern2 = R"(
+; CHECK-LABEL: @add
+; CHECK: fadd <2 x float>
+; CHECK: fadd <2 x float>
+; CHECK-NOT: fadd
+; CHECK: store <4 x float>
+; CHECK: }
+      )";
+
+  CompileAndVerifyIr(std::move(hlo_module),
+                     std::vector<std::string>{pattern1,pattern2},
+                    /*match_optimized_ir=*/true);
 }
 
 TEST_F(GpuUnrollingTest, DisabledUnrollUnfusedSine) {
@@ -231,6 +259,7 @@ TEST_F(GpuUnrollingTest, DisabledUnrollUnfusedPower) {
                      /*match_optimized_ir=*/true);
 }
 
+
 TEST_F(GpuUnrollingTest, DisabledUnrollUnfusedAtan2) {
   HloModuleConfig config;
   auto debug_options = HloTestBase::GetDebugOptionsForTest();
@@ -247,12 +276,20 @@ TEST_F(GpuUnrollingTest, DisabledUnrollUnfusedAtan2) {
   auto hlo_module =
       ParseAndReturnVerifiedModule(kUnfusedAddModule, config).ValueOrDie();
 
-  CompileAndVerifyIr(std::move(hlo_module),
-                     R"(
+  // Note: On ROCm side, we do bare minimal to make the test pass.
+  // "atan2" function is in different code generation path from nvptx: on
+  // ROCm platform, it get pulled in from ROCm-Device-Libs, whereas in
+  // Cuda, generated llvm IR is compiled PTX.
+  auto expected_ir = is_built_with_rocm_ ? R"(
+; CHECK: tail call float @llvm.fmuladd.f32(float %{{.*}}, float 0x3F65A54B00000000, float 0xBF8F4B2180000000)
+)"
+                                         : R"(
 ; CHECK: load float
 ; CHECK-NOT: load float
 }
-      )",
+)";
+
+  CompileAndVerifyIr(std::move(hlo_module), expected_ir,
                      /*match_optimized_ir=*/true);
 }
 
@@ -286,8 +323,7 @@ TEST_F(GpuUnrollingTest, UnrollMultiOutputFusion) {
       ParseAndReturnVerifiedModule(kMultiOutputFusionModule, config)
           .ValueOrDie();
 
-  CompileAndVerifyIr(std::move(hlo_module),
-                     R"(
+  std::string pattern1 = R"(
 ; CHECK-LABEL: @fusion
 ; CHECK: load <2 x float>
 ; CHECK: load <2 x float>
@@ -302,7 +338,40 @@ TEST_F(GpuUnrollingTest, UnrollMultiOutputFusion) {
 ; CHECK-NOT: fadd
 ; CHECK-NOT: fmul
 ; CHECK: }
-      )",
+      )";
+
+  std::string pattern2 = R"(
+; CHECK-LABEL: @fusion
+; CHECK: load <2 x float>
+; CHECK: load <2 x float>
+; CHECK-NOT: load <2 x float>
+; CHECK: fadd <2 x float>
+; CHECK: fmul <2 x float>
+; CHECK: store <2 x float>
+; CHECK: store <2 x float>
+; CHECK-NOT: store <2 x float>
+; CHECK-NOT: fadd
+; CHECK-NOT: fmul
+; CHECK: }
+      )";
+
+  std::string pattern3 = R"(
+; CHECK-LABEL: @fusion
+; CHECK: load <2 x float>
+; CHECK: load <2 x float>
+; CHECK-NOT: load <2 x float>
+; CHECK: fadd <2 x float>
+; CHECK: store <2 x float>
+; CHECK: fmul <2 x float>
+; CHECK: store <2 x float>
+; CHECK-NOT: store <2 x float>
+; CHECK-NOT: fadd
+; CHECK-NOT: fmul
+; CHECK: }
+      )";
+
+  CompileAndVerifyIr(std::move(hlo_module),
+                     std::vector<std::string>{pattern1,pattern2,pattern3},
                      /*match_optimized_ir=*/true);
 }
 

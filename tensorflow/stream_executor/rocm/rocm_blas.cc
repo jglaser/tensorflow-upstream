@@ -47,6 +47,9 @@ namespace gpu {
 
 PLUGIN_REGISTRY_DEFINE_PLUGIN_ID(kRocBlasPlugin);
 
+extern void broadcast_fp32(void* stream, float* dst, int dst_stride,
+                           int batches, int src_batches, float* src, int size);
+
 namespace wrap = tensorflow::wrap;
 
 template <class T>
@@ -72,6 +75,7 @@ typename RocBlasTypeConversionHelper<T>::mapped_type *complex_cast(
 }
 
 static void blas_log(const char *c) {}
+
 
 static string ToString(rocblas_status status) {
   switch (status) {
@@ -1623,53 +1627,107 @@ bool ROCMBlas::GetBlasGemmAlgorithms(
   return true;
 }
 
+struct memory_copy_op {
+    char* src_ptr;
+    char* dst_ptr;
+    uint64_t size;
+    uint64_t count;
+    uint64_t dst_stride;
+    uint64_t src_count;
+};
+
+static bool fold(memory_copy_op& y, const memory_copy_op& x) 
+{
+  bool misaligned = (x.size & 3) 
+    || (reinterpret_cast<uint64_t>(x.dst_ptr) & 3)
+    || (reinterpret_cast<uint64_t>(x.src_ptr) & 3)
+    || (reinterpret_cast<uint64_t>(y.dst_ptr) & 3)
+    || (reinterpret_cast<uint64_t>(y.src_ptr) & 3);
+  int64_t dst_step = reinterpret_cast<int64_t>(x.dst_ptr)-reinterpret_cast<int64_t>(y.dst_ptr);
+  if(x.src_ptr==y.src_ptr
+    && x.size==y.size
+    && (y.count==1 || x.dst_ptr==y.dst_ptr+y.count*y.dst_stride)
+    && !misaligned
+    && y.src_count==1
+    && !(dst_step & 3) ) {
+    if(y.count==1)
+      y.dst_stride=dst_step;
+    y.count++;
+    return true;
+  }
+  else if(x.src_ptr==y.src_ptr+y.size && x.dst_ptr==y.dst_ptr+y.size && y.count==1 && y.src_count==1) {
+    y.size += x.size;
+    return true;
+  }
+  if(x.src_ptr == y.src_ptr+y.size*y.src_count
+      && x.dst_ptr == y.dst_ptr + y.dst_stride*y.src_count*y.count
+      && x.count == y.count
+      && x.dst_stride == y.dst_stride) {
+    y.src_count+=x.src_count;
+    return true;
+  }
+  return false;
+}
+
 // This copies from source memory: raw_ptrs[i] to target memory:
 // device_memory_ptr at the interval of matrix_byte_size, or vice versa.
 // The below algorithm tries to minimize the number of memcpy by consolidating
 // neighboring memcpy into a single request
 template <typename MAPPED_T>
-port::Status ReorganizeMemory(Stream *stream,
-                              DeviceMemory<MAPPED_T> *device_memory,
-                              const std::vector<MAPPED_T *> &raw_ptrs,
-                              int batch_count, uint64_t batch_stride,
-                              bool gather) {
+port::Status ReorganizeMemory(Stream* stream,
+      DeviceMemory<MAPPED_T> *device_memory,
+        const std::vector<MAPPED_T*>  &raw_ptrs,
+    int batch_count, uint64_t batch_stride,
+    bool gather)
+{
+  if(gather==false)
+    return port::Status(port::error::INTERNAL, "gather=false unsupported");
   assert(batch_count > 0);
   char *device_memory_ptr = static_cast<char *>(device_memory->opaque());
-  char *src_ptr = reinterpret_cast<char *>(raw_ptrs[0]);
-  char *dst_ptr = device_memory_ptr;
+  char* src_ptr = reinterpret_cast<char*>(raw_ptrs[0]);
+  char* dst_ptr = device_memory_ptr;
   size_t matrix_byte_size = batch_stride * sizeof(MAPPED_T);
-  uint64_t cur_stride_size = matrix_byte_size;
 
+  std::vector<memory_copy_op> ops;
+  ops.push_back(memory_copy_op{src_ptr, dst_ptr, matrix_byte_size, 1, 0, 1});
   for (int i = 1; i < batch_count; ++i) {
-    if (reinterpret_cast<char *>(raw_ptrs[i]) == src_ptr + cur_stride_size) {
-      cur_stride_size += matrix_byte_size;
-    } else {
-      DeviceMemoryBase src_mem = DeviceMemoryBase(src_ptr, cur_stride_size);
-      DeviceMemoryBase target_mem = DeviceMemoryBase(dst_ptr, cur_stride_size);
-      bool a_status =
-          gather
-              ? stream->ThenMemcpy(&target_mem, src_mem, cur_stride_size).ok()
-              : stream->ThenMemcpy(&src_mem, target_mem, cur_stride_size).ok();
+    src_ptr = reinterpret_cast<char*>(raw_ptrs[i]);
+    dst_ptr = device_memory_ptr + i * matrix_byte_size;
+
+    memory_copy_op x{src_ptr, dst_ptr, matrix_byte_size, 1, 0, 1};
+    while(ops.size()>1 && fold(ops[ops.size()-2], ops.back())) {
+      ops.pop_back();
+    }
+    memory_copy_op& op = ops.back();
+    if(fold(op, x)) {
+      continue;
+    }
+    ops.push_back(x);
+  }
+  while(ops.size()>1 && fold(ops[ops.size()-2], ops.back()))
+    ops.pop_back();
+  int i=0;
+  for (auto& x : ops) {
+    if(x.src_count>1 || x.count>1) {
+      broadcast_fp32(AsGpuStreamValue(stream),
+                     reinterpret_cast<float*>(x.dst_ptr),
+                     x.dst_stride >> 2, x.count, x.src_count,
+                     reinterpret_cast<float*>(x.src_ptr),
+                     x.size >> 2);
+    }
+    else {
+      DeviceMemoryBase src_mem = DeviceMemoryBase(x.src_ptr, x.size);
+      DeviceMemoryBase target_mem = DeviceMemoryBase(x.dst_ptr, x.size);
+      bool a_status = stream->ThenMemcpy(&target_mem, src_mem, x.size).ok();
       if (!a_status) {
         return port::Status(
             port::error::INTERNAL,
-            "failed to copy device memory in ROCMBlas::DoBlasGemmBatched");
+          "failed to copy device memory in ROCMBlas::DoBlasGemmBatched");
       }
-      src_ptr = reinterpret_cast<char *>(raw_ptrs[i]);
-      dst_ptr = device_memory_ptr + i * matrix_byte_size;
-      cur_stride_size = matrix_byte_size;
     }
+    i++;
   }
-
-  DeviceMemoryBase src_mem = DeviceMemoryBase(src_ptr, cur_stride_size);
-  DeviceMemoryBase target_mem = DeviceMemoryBase(dst_ptr, cur_stride_size);
-  bool a_status =
-      gather ? stream->ThenMemcpy(&target_mem, src_mem, cur_stride_size).ok()
-             : stream->ThenMemcpy(&src_mem, target_mem, cur_stride_size).ok();
-  if (!a_status)
-    return port::Status(
-        port::error::INTERNAL,
-        "failed to copy device memory in ROCMBlas::DoBlasGemmBatched");
+  fflush(stdout);
   return port::Status::OK();
 }
 
@@ -1720,6 +1778,11 @@ port::Status ROCMBlas::AllocateStridedBuffer(
     *device_memory =
         DeviceMemory<MAPPED_T>(*(*temp_memory)->mutable_device_memory());
   }
+  assert(batch_count > 0);
+  char* device_memory_ptr = static_cast<char*>(device_memory->opaque());
+  char* src_ptr = reinterpret_cast<char*>(raw_ptrs[0]);
+  char* dst_ptr = device_memory_ptr;
+  uint64_t cur_stride_size = matrix_byte_size;
 
   reallocated = true;
 
@@ -1728,6 +1791,7 @@ port::Status ROCMBlas::AllocateStridedBuffer(
                             batch_stride, true);
   return port::Status::OK();
 }
+
 
 template <typename T, typename FuncT>
 port::Status ROCMBlas::DoBlasGemmBatchedInternal(
@@ -1901,6 +1965,7 @@ bool ROCMBlas::DoBlasGemmBatched(
   }
   return status.ok();
 }
+
 
 bool ROCMBlas::DoBlasGemmBatched(
     Stream *stream, blas::Transpose transa, blas::Transpose transb, uint64_t m,

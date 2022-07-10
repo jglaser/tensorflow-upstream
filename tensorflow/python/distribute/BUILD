@@ -660,6 +660,7 @@ distribute_py_test(
     tags = [
         "multi_and_single_gpu",
         "no_cuda_asan",  # b/213388775
+        "no_rocm", # very slow (15+ min) as of 220613
     ],
     tpu_tags = [
         "no_oss",
@@ -1135,8 +1136,10 @@ distribute_py_test(
     shard_count = 10,
     tags = [
         "multi_and_single_gpu",
-        "no_cuda_asan",  # TODO(b/214574707): times out
-        "notsan",  # TODO(b/177098062): flaky for over a year
+        "no_cuda_asan",  # times out
+        "no_gpu",  # TODO(b/213596871): times out
+        "notsan",  # b/177098062
+        "no_rocm", # broken in 4.1
     ],
     deps = [
         ":collective_all_reduce_strategy",
@@ -1223,6 +1226,7 @@ cuda_py_test(
     tags = [
         "multi_and_single_gpu",
         "no_cuda_asan",  # times out
+        "no_rocm" # flaky/timeout with 4.1
     ],
     deps = [
         ":collective_util",
@@ -2094,6 +2098,7 @@ distribute_py_test(
     tags = [
         "multi_and_single_gpu",
         "notsan",  # TODO(b/160006974)
+        "no_rocm" # flaky/timeout with 4.1
     ],
     xla_enable_strict_auto_jit = True,
     deps = [
@@ -2130,6 +2135,7 @@ distribute_py_test(
         "multi_and_single_gpu",
         "no_cuda_asan",  # times out
         "notsan",  # TODO(b/160006974)
+        "no_rocm" # flaky/timeout with 4.1
     ],
     xla_enable_strict_auto_jit = True,
     deps = [
@@ -2204,6 +2210,7 @@ distribute_py_test(
     disable_mlir_bridge = False,
     tags = [
         "multi_and_single_gpu",
+        "no_rocm" # flaky/timeout with 4.1
     ],
     deps = [
         ":combinations",

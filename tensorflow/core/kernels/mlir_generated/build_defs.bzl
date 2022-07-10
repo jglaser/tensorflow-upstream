@@ -391,7 +391,7 @@ def _gen_kernel_library(
                     output_type = output_type,
                 ),
                 srcs = ["build_test.sh"],
-                tags = ["no_rocm"] + test_tags,
+                tags = test_tags,
                 args = test_args,
                 size = test_size,
                 data = [

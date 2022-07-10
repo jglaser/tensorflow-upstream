@@ -331,8 +331,11 @@ class UniqueOpGPU : public AsyncOpKernel {
                                      has_count_output, done]() -> void {
       const GPUDevice& device = context->eigen_gpu_device();
       int64 uniq_size = (*last_idx_host.data()) + 1;
-
+#if GOOGLE_CUDA
+      se::cuda::ScopedActivateExecutorContext scoped_activation{
+#else
       se::gpu::ScopedActivateExecutorContext scoped_activation{
+#endif
           context->op_device_context()->stream()->parent()};
 
       Tensor unique_input_inds;
@@ -377,7 +380,12 @@ class UniqueOpGPU : public AsyncOpKernel {
                        /*keys_out=*/sorted_unique_input_inds_ptr,
                        /*indices_in=*/static_cast<const TIndex*>(nullptr),
                        /*indices_out=*/sorted_unique_perm_ptr,
+#if GOOGLE_CUDA
                        /*num_bits=*/Log2Ceiling(input_size)),
+#else
+                       // rocprim can't handle num_bits=0
+                       /*num_bits=*/Log2Ceiling(input_size<=2 ? 2 : input_size)),
+#endif
           done);
 
       // Free temporary tensor that is no longer needed.

@@ -125,6 +125,7 @@ tf_py_test(
     size = "small",
     srcs = ["fault_tolerance_test.py"],
     shard_count = 8,
+    tags = ["no_rocm"],
     deps = [
         ":test_base",
         "//tensorflow:tensorflow_py",
@@ -180,6 +181,7 @@ tf_py_test(
     name = "cross_trainer_cache_test",
     size = "medium",
     srcs = ["cross_trainer_cache_test.py"],
+    tags = ["no_rocm"],
     shard_count = 4,
     deps = [
         ":test_base",

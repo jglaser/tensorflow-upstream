@@ -38,6 +38,11 @@ class LlvmIrGenTestBase : public CodegenTestBase {
   void CompileAndVerifyIr(std::unique_ptr<HloModule> hlo_module,
                           const std::string& pattern, bool match_optimized_ir);
 
+  // Same as above, to be used if there are multiple valid patterns
+  void CompileAndVerifyIr(std::unique_ptr<HloModule> hlo_module,
+                          const std::vector<std::string>& patterns,
+                          bool match_optimized_ir);
+
   // A thin wrapper around CompileAndVerifyIr that parses `hlo_text` to create
   // an HLO module.
   void CompileAndVerifyIr(const std::string& hlo_text,

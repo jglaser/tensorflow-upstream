@@ -793,6 +793,7 @@ xla_test(
     srcs = ["exhaustive_unary_test_f32_or_smaller.cc"],
     real_hardware_only = True,  # Very slow on the interpreter.
     shard_count = 48,
+    size = "large",
     tags = [
         "optonly",
         # This is a big test that we skip for capacity reasons in OSS testing.
@@ -814,6 +815,7 @@ xla_test(
         "cpu",
     ],
     shard_count = 48,
+    size = "large",
     tags = [
         "optonly",
         # This is a big test that we skip for capacity reasons in OSS testing.
@@ -837,6 +839,7 @@ xla_test(
         "cpu",
     ],
     shard_count = 48,
+    size = "large",
     tags = [
         "optonly",
         # This is a big test that we skip for capacity reasons in OSS testing.
@@ -858,6 +861,7 @@ xla_test(
         "cpu",
     ],
     shard_count = 48,
+    size = "large",
     tags = [
         "optonly",
         # This is a big test that we skip for capacity reasons in OSS testing.
@@ -877,6 +881,7 @@ xla_test(
         "cpu",
     ],
     shard_count = 48,
+    size = "large",
     tags = [
         "optonly",
         # This is a big test that we skip for capacity reasons in OSS testing.
@@ -2816,6 +2821,7 @@ xla_test(
     real_hardware_only = True,
     tags = [
         "optonly",
+        "no_rocm", # broken since 220530 (SWDEV-342540)
     ],
     deps = [
         ":test_macros_header",

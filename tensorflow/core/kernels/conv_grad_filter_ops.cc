@@ -831,13 +831,15 @@ void LaunchConv2DBackpropFilterOp<Eigen::GpuDevice, T>::operator()(
       << common_padding_cols << ")";
 
 #if GOOGLE_CUDA
-  const bool compute_in_nhwc = ComputeInNhwcEnabled(DataTypeToEnum<T>::value,
+    const bool compute_in_nhwc = ComputeInNhwcEnabled(DataTypeToEnum<T>::value,
                                                     stream, /*is_conv2d=*/true);
+#elif TENSORFLOW_USE_ROCM
+  // AMD Matrix Cores on MI100 and MI200 allow for efficient FP16 NHWC convolutions
+  const bool compute_in_nhwc = DataTypeToEnum<T>::value == DT_HALF &&
+                               UseNhwcLayoutForConvOnRocm(stream);
 #else
-  // fast NHWC implementation is a CUDA only feature
   const bool compute_in_nhwc = false;
 #endif
-
   // We only do one directional conversion: NHWC->NCHW. We never convert in the
   // other direction. Grappler layout optimizer selects the preferred layout and
   // adds necessary annotations to the graph.

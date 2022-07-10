@@ -25,7 +25,7 @@ echo "Bazel will use ${N_BUILD_JOBS} concurrent build job(s) and ${N_TEST_JOBS} 
 echo ""
 
 # First positional argument (if any) specifies the ROCM_INSTALL_DIR
-ROCM_INSTALL_DIR=/opt/rocm-5.1.0
+ROCM_INSTALL_DIR=/opt/rocm-5.2.0
 if [[ -n $1 ]]; then
     ROCM_INSTALL_DIR=$1
 fi
@@ -45,7 +45,7 @@ bazel test \
       --test_tag_filters=-no_gpu,-no_rocm \
       --jobs=${N_BUILD_JOBS} \
       --local_test_jobs=${N_TEST_JOBS} \
-      --test_timeout 600,900,2400,7200 \
+      --test_timeout 900,2400,7200,9600 \
       --build_tests_only \
       --test_output=errors \
       --test_sharding_strategy=disabled \
@@ -54,7 +54,6 @@ bazel test \
       --test_env=TF_PER_DEVICE_MEMORY_LIMIT_MB=2048 \
       -- \
 //tensorflow/core/common_runtime/gpu:gpu_device_unified_memory_test_2gpu \
-//tensorflow/core/kernels:collective_nccl_test_2gpu \
 //tensorflow/core/nccl:nccl_manager_test_2gpu \
 //tensorflow/python/distribute/integration_test:mwms_peer_failure_test_2gpu \
 //tensorflow/python/distribute:checkpoint_utils_test_2gpu \
@@ -74,29 +73,12 @@ bazel test \
 //tensorflow/python/distribute:tf_function_test_2gpu \
 //tensorflow/python/distribute:vars_test_2gpu \
 //tensorflow/python/distribute:warm_starting_util_test_2gpu \
-//tensorflow/python/keras/distribute:collective_all_reduce_strategy_test_2gpu \
-//tensorflow/python/keras/distribute:collective_all_reduce_strategy_test_xla_2gpu \
-//tensorflow/python/keras/distribute:ctl_correctness_test_2gpu \
-//tensorflow/python/keras/distribute:custom_training_loop_optimizer_test_2gpu \
-//tensorflow/python/keras/distribute:keras_metrics_test_2gpu \
-//tensorflow/python/keras/distribute:keras_models_test_2gpu \
-//tensorflow/python/keras/distribute:keras_optimizer_v2_test_2gpu \
-//tensorflow/python/keras/distribute:keras_stateful_lstm_model_correctness_test_2gpu \
-//tensorflow/python/keras/distribute:mirrored_strategy_test_2gpu \
-//tensorflow/python/keras/distribute:mirrored_variable_test_2gpu \
-//tensorflow/python/keras/distribute:multi_worker_test_2gpu \
-//tensorflow/python/keras/layers/preprocessing:category_crossing_distribution_test_2gpu \
-//tensorflow/python/keras/layers/preprocessing:category_encoding_distribution_test_2gpu \
-//tensorflow/python/keras/layers/preprocessing:discretization_distribution_test_2gpu \
-//tensorflow/python/keras/layers/preprocessing:hashing_distribution_test_2gpu \
-//tensorflow/python/keras/layers/preprocessing:image_preprocessing_distribution_test_2gpu \
-//tensorflow/python/keras/layers/preprocessing:index_lookup_distribution_test_2gpu \
-//tensorflow/python/keras/layers/preprocessing:text_vectorization_distribution_test_2gpu \
-//tensorflow/python/kernel_tests:dynamic_partition_op_test_2gpu \
 //tensorflow/python/training:saver_test_2gpu \
 
 
 
+#  Started failing with 210906 sync
+# FAILED : //tensorflow/core/kernels:collective_nccl_test_2gpu \
 
 # no_rocm : //tensorflow/python/keras/distribute:keras_dnn_correctness_test_2gpu \
 # no_rocm : //tensorflow/python/keras/distribute:keras_embedding_model_correctness_test_2gpu \

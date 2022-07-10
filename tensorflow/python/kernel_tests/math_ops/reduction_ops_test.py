@@ -233,8 +233,9 @@ class SumReductionTest(BaseReductionTest):
     # only on GPU, since it has the more accurate implementation
     if not test.is_gpu_available():
       return
+    for n in (200, 500, 5000, 68000):
+      arr = np.ones([n], dtype=np.float16)
 
-    arr = np.ones([68000], dtype=np.float16)
 
     with self.session(graph=ops.Graph(), use_gpu=True) as sess:
       tf_arr = variables.Variable(arr)

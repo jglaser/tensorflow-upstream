@@ -256,6 +256,7 @@ tf_py_test(
     name = "dispatch_test",
     srcs = ["dispatch_test.py"],
     python_version = "PY3",
+    tags = ["no_rocm"],
     deps = [
         ":util",
         "//tensorflow/python:client_testlib",
@@ -492,6 +493,7 @@ tf_py_test(
     size = "small",
     srcs = ["traceback_utils_test.py"],
     python_version = "PY3",
+    tags = ["no_rocm"],
     deps = [
         "//tensorflow/python:array_ops",
         "//tensorflow/python:variables",

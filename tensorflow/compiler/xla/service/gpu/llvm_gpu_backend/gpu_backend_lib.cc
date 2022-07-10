@@ -739,7 +739,7 @@ StatusOr<std::vector<uint8_t>> EmitModuleToHsaco(
   std::string lld_path = tensorflow::io::JoinPath("/opt/rocm", "llvm/bin");
   auto lld_program = llvm::sys::findProgramByName("ld.lld", {lld_path});
   if (!lld_program) {
-    return xla::InternalError("unable to find ld.lld in PATH: %s",
+    return xla::InternalError("unable to find ld.lld in %s: %s", lld_path,
                               lld_program.getError().message());
   }
   std::vector<llvm::StringRef> lld_args{
@@ -800,11 +800,16 @@ Status AMDGPUTargetModuleLinker(llvm::Module* module, GpuVersion gpu_version,
   TF_RETURN_IF_ERROR(
       LinkROCDLIfNecessary(module, gcn_arch_name, device_bitcode_dir_path));
 
-  // If ftz is enabled, set it as an attribute on every function in the module.
-  if (hlo_module_config.debug_options().xla_gpu_ftz()) {
-    for (llvm::Function& fn : *module) {
+  // For rocm, we always enable flush to zero. (for cuda, this is determined
+  // via environemnt variables). This deceision was based on the observation
+  // Eugene had that the AMD GPU llvm backend has not picked up the atomic add
+  // instructions correctly without ftz enabled. We concluded that this should
+  // not has major impact as the hipcc path by default enables flush to zero for
+  // compilation.
+  for (llvm::Function& fn : *module) {
+      // may be necessary for the compiler to generate atomics (confirm!)
       fn.addFnAttr("denormal-fp-math-f32", "preserve-sign");
-    }
+      fn.addFnAttr("amdgpu-unsafe-fp-atomics", "true");
   }
 
   return OkStatus();
@@ -820,10 +825,13 @@ Status AMDGPUTargetModuleLinker(llvm::Module* module, GpuVersion gpu_version,
 // related changes which have not yet been upstreamed (to the LLVM repo)
 // When that upstreaming happens (and TF LLVM pointer moves past the
 // upstream commit), the following mapping will need to change
-std::string MapGCNArchNameTokenToFeatureStr(const std::string& token) {
+std::string MapGCNArchNameTokenToFeatureStr(const std::string& token,
+                                            const std::string& gfx) {
   if (token == "sramecc+") {
     return "+sramecc";
   } else if (token == "sramecc-") {
+    if(gfx=="gfx90a")
+      return "";
     return "-sramecc";
   } else if (token == "xnack+") {
     return "+xnack";
@@ -831,6 +839,7 @@ std::string MapGCNArchNameTokenToFeatureStr(const std::string& token) {
     return "-xnack";
   }
   return "";
+
 }
 
 std::pair<std::string, std::string> GetFeatureStrFromGCNArchName(
@@ -848,7 +857,7 @@ std::pair<std::string, std::string> GetFeatureStrFromGCNArchName(
     // The rest of the tokens are the feature/targetid strings
     if (it != tokens.begin()) {
       std::string token(*it);
-      std::string mapped_token = MapGCNArchNameTokenToFeatureStr(token);
+      std::string mapped_token = MapGCNArchNameTokenToFeatureStr(token, gfx);
       mapped_tokens.push_back(mapped_token);
     }
   }

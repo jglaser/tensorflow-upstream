@@ -32,6 +32,7 @@ limitations under the License.
 #include "tensorflow/core/platform/types.h"
 
 #if GOOGLE_CUDA || TENSORFLOW_USE_ROCM
+#include "rocm/rocm_config.h"
 #include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/kernels/transpose_functor.h"
 #include "tensorflow/core/util/gpu_solvers.h"
@@ -246,7 +247,7 @@ class MatrixSolveOpGpu : public AsyncOpKernel {
           done);
     } else {
       // For small batch sizes or large matrices, we use the non-batched
-      // interface from cuSolver, which is much faster for large matrices.
+      // interface from cuSolver/rocSolver, which is much faster for large matrices.
       dev_info.push_back(solver->GetDeviceLapackInfo(batch_size, "getrf"));
       for (int batch = 0; batch < batch_size; ++batch) {
         OP_REQUIRES_OK_ASYNC(
@@ -294,7 +295,8 @@ class MatrixSolveOpGpu : public AsyncOpKernel {
     // 3. Solve op(A) X = B (in column major form).
     // We use a trick here: If adjoint_ is true, we converted A to column major
     // form above. If adjoint is false then I leave A in row-major form and use
-    // trans_a = CUBLAS_OP_T to effectively transform it to column-major on the
+    // trans_a = CUBLAS_OP_T (rocblas_operation_transpose) to effectively 
+    // transform it to column-major on the
     // fly. (This means that we actually use the LU-factorization of A^T in that
     // case, but that is equally good for solving AX=B). This way we save an
     // explicit transpose in the more common case of adjoint_ == false.
@@ -330,6 +332,7 @@ class MatrixSolveOpGpu : public AsyncOpKernel {
                                pivots_mat.data(), transposed_rhs_ptrs_base, n,
                                &host_info, batch_size),
           done);
+
       OP_REQUIRES_ASYNC(
           context, host_info == 0,
           errors::InvalidArgument("The ", -host_info,
@@ -392,7 +395,7 @@ REGISTER_LINALG_OP_GPU("MatrixSolve", (MatrixSolveOpGpu<complex64>), complex64);
 REGISTER_LINALG_OP_GPU("MatrixSolve", (MatrixSolveOpGpu<complex128>),
                        complex128);
 
-#endif  // GOOGLE_CUDA
+#endif  // GOOGLE_CUDA || TENSORFLOW_USE_ROCM
 
 REGISTER_LINALG_OP("MatrixSolve", (MatrixSolveOp<float>), float);
 REGISTER_LINALG_OP("MatrixSolve", (MatrixSolveOp<double>), double);

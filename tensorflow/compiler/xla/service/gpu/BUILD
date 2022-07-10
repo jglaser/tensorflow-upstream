@@ -282,6 +282,7 @@ cc_library(
         "//tensorflow/compiler/xla:xla_data_proto_cc",
         "//tensorflow/compiler/xla/service/llvm_ir:llvm_type_conversion_util",
         "//tensorflow/compiler/xla/service/llvm_ir:llvm_util",
+        "//tensorflow/compiler/xla/service/llvm_ir:ir_builder_mixin",
         "//tensorflow/core:lib",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
@@ -1935,6 +1936,7 @@ tf_cc_test(
     tags = [
         "gpu",
         "no_rocm",
+        "cuda_only",
         "nomsan",  # Pulls in precompiled NVIDIA libraries which cause false
         # positives in msan.
     ],
@@ -2284,6 +2286,7 @@ tf_cc_test(
         "//tensorflow/core:test_main",
         "//tensorflow/compiler/xla:shape_util",
         "//tensorflow/compiler/xla:types",
+        "//tensorflow/core:core",
         "//tensorflow/core:test",
     ] + if_cuda_is_configured([
         ":buffer_comparator",

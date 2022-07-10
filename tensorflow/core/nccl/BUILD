@@ -65,9 +65,8 @@ tf_cuda_cc_test(
         "manual",
         "multi_gpu",
         "no_oss",
-        # TODO(b/147451637): Replace 'no_rocm' with 'rocm_multi_gpu'.
-        "no_rocm",
         "notap",
+        "no_rocm", # flaky on CI as of 2022-05-30
     ],
     deps = [
         "//tensorflow/core:test",

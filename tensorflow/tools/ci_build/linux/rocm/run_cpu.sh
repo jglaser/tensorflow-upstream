@@ -45,4 +45,8 @@ bazel test \
       //tensorflow/... \
       -//tensorflow/python/integration_testing/... \
       -//tensorflow/core/tpu/... \
+      -//tensorflow/java/... \
       -//tensorflow/lite/... \
+      -//tensorflow/c/eager:c_api_distributed_test \
+      -//tensorflow/python/data/experimental/kernel_tests/service:local_workers_test \
+      -//tensorflow/python/data/experimental/kernel_tests/service:worker_tags_test \

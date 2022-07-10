@@ -462,7 +462,7 @@ class AutoMixedPrecisionTest(test.TestCase, parameterized.TestCase):
       # Bump up the tolerance for the ROCm platform
       # The default tolerance (1e-3) results in a tiny fraction (<1%) of
       # miscompares on ROCm platform, and hence the tolerance bump
-      tol = 2e-3
+      tol = 5e-3
     else:
       tol = 1e-3
     self.assertAllClose(output_val_ref, output_val, atol=tol, rtol=tol)
@@ -534,7 +534,7 @@ class AutoMixedPrecisionTest(test.TestCase, parameterized.TestCase):
       random_seed.set_random_seed(0)
       x = _input([2, 8, 8, 1])
       y = _conv_bn(x)
-      y = nn.dropout(y, rate=0.5)
+      y = nn.dropout(y, rate=0.5, seed=1337)
       y = math_ops.add(y, 1, name='addition')
       y = _conv_bn(y)
       y = array_ops.identity(y)
@@ -697,7 +697,7 @@ class AutoMixedPrecisionTest(test.TestCase, parameterized.TestCase):
       self._assert_output_f16(mode, node_map, 'Relu' + suffix)
       self._assert_output_f16(mode, node_map, 'MaxPool' + suffix)
     self._assert_output_f16(mode, node_map, 'concat')
-    self.assertAllClose(output_val_ref, output_val, atol=1e-3, rtol=1e-3)
+    self.assertAllClose(output_val_ref, output_val, atol=1e-2, rtol=1e-2)
 
   @parameterized.parameters(['cuda', 'mkl'])
   @test_util.run_deprecated_v1

@@ -47,6 +47,7 @@ limitations under the License.
 #include "tensorflow/core/platform/casts.h"
 #include "tensorflow/core/platform/errors.h"
 #include "tensorflow/core/platform/logging.h"
+#include "tensorflow/core/platform/random.h"
 #include "tensorflow/core/profiler/lib/scoped_annotation.h"
 #include "tensorflow/core/profiler/lib/traceme.h"
 #include "tensorflow/stream_executor/platform.h"
@@ -331,6 +332,15 @@ GpuExecutable::GpuExecutable(GpuExecutable::Params params)
           params.verbose_buffer_assignment_string_dumper),
       constants_(std::move(params.constants)),
       output_info_(std::move(params.output_info)) {
+#if TENSORFLOW_USE_ROCM
+  // ROCm uses hsaco hashes to distinguish between modules.
+  // Bad things happen if multiple modules with identical code are loaded.
+  binary_.resize(binary_.size() + 16);
+  *(uint64_t*)(&binary_[binary_.size() - 16]) = tensorflow::EnvTime::NowNanos();
+  *(uint64_t*)(&binary_[binary_.size() - 8]) = tensorflow::random::New64();
+  // workaround for a bug in ROCm 3.3 hipModuleLoadData
+  binary_.reserve(binary_.size() + 256);
+#endif
   if (has_module()) {
     XlaDebugInfoManager::Get()->RegisterModule(
         module().unique_id(), shared_module(), debug_buffer_assignment_);

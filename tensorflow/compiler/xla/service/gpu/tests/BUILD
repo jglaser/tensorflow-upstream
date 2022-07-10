@@ -605,7 +605,7 @@ tf_cc_test(
 tf_cc_test(
     name = "gpu_unrolling_test",
     srcs = ["gpu_unrolling_test.cc"],
-    tags = tf_cuda_tests_tags() + ["no_rocm"],
+    tags = tf_cuda_tests_tags(),
     deps = [
         ":gpu_codegen_test",
         "//tensorflow/compiler/xla/service:hlo_module_config",
@@ -683,6 +683,9 @@ xla_test(
     name = "bef_executable_test",
     srcs = ["bef_executable_test.cc"],
     backends = ["gpu"],
+    tags = [
+        "no_rocm",
+    ],
     deps = [
         "//tensorflow/compiler/xla:array2d",
         "//tensorflow/compiler/xla:reference_util",
@@ -754,6 +757,7 @@ glob_lit_tests(
     tags_override = {
         "reduction_vectorization_sm_all.hlo": ["no_rocm"],
         "element_wise_row_vectorization.hlo": ["no_rocm"],
+        "reduce_unnested.hlo": ["no_rocm"],
     },
     test_file_exts = ["hlo"],
 )

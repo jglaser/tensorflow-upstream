@@ -29,6 +29,9 @@ limitations under the License.
 #include "tensorflow/core/lib/hash/hash.h"
 #include "tensorflow/core/util/autotune_maps/conv_parameters.h"
 #include "tensorflow/core/util/tensor_format.h"
+#if TENSORFLOW_USE_ROCM
+#include "tensorflow/stream_executor/rocm/rocm_dnn.h"
+#endif
 
 namespace tensorflow {
 
@@ -201,6 +204,16 @@ Status LaunchAutotunedConv(const AutotuneEntry<se::dnn::ConvOp>& autotune_entry,
         nullptr);
   }
 }
+
+bool UseNhwcLayoutForConvOnRocm(se::Stream* stream); /* {
+ #if TENSORFLOW_USE_ROCM
+    bool is_enabled = se::gpu::UseNhwcLayoutForRocm();
+    auto rocm_compute_capability = stream->GetRocmComputeCapability();
+    return (is_enabled && rocm_compute_capability.has_nhwc_layout_support());
+ #else
+    return false;
+ #endif
+ }*/
 
 }  // namespace tensorflow
 

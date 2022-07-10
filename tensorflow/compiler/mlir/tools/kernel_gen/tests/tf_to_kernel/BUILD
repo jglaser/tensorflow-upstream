@@ -5,9 +5,7 @@ package(licenses = ["notice"])
 glob_lit_tests(
     data = [":test_utilities"],
     default_tags = [
-        # We need access to the CUDA SDK.
         "gpu",
-        "no_rocm",
     ],
     driver = "//tensorflow/compiler/mlir:run_lit.sh",
     test_file_exts = ["mlir"],

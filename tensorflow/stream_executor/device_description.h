@@ -103,7 +103,7 @@ class RocmComputeCapability {
  public:
   // gcn_arch_name example --  gfx90a:sramecc+:xnack-
   // gfx_version is the "gfx90a" part of the gcn_arch_name
-  explicit RocmComputeCapability(const std::string &gcn_arch_name)
+  explicit RocmComputeCapability(const std::string gcn_arch_name)
       : gcn_arch_name_(gcn_arch_name) {}
 
   ~RocmComputeCapability() {}

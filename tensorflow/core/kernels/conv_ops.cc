@@ -79,6 +79,16 @@ namespace tensorflow {
 typedef Eigen::ThreadPoolDevice CPUDevice;
 typedef Eigen::GpuDevice GPUDevice;
 
+bool UseNhwcLayoutForConvOnRocm(se::Stream* stream) {
+#if TENSORFLOW_USE_ROCM
+   bool is_enabled = se::gpu::UseNhwcLayoutForRocm();
+   auto rocm_compute_capability = stream->GetRocmComputeCapability();
+   return (is_enabled && rocm_compute_capability.has_nhwc_layout_support());
+#else
+   return false;
+#endif
+}
+
 namespace {
 template <typename Device, typename T>
 struct LaunchGeneric {
@@ -873,10 +883,14 @@ void LaunchConv2DOp<GPUDevice, T>::operator()(
   }
 
 #if GOOGLE_CUDA
-  const bool compute_in_nhwc = ComputeInNhwcEnabled(DataTypeToEnum<T>::value,
+    const bool compute_in_nhwc = ComputeInNhwcEnabled(DataTypeToEnum<T>::value,
                                                     stream, /*is_conv2d=*/true);
+#elif TENSORFLOW_USE_ROCM
+  // AMD MI100+ allows for efficient FP16 NHWC convolutions
+  const bool compute_in_nhwc = DataTypeToEnum<T>::value == DT_HALF &&
+                               UseNhwcLayoutForConvOnRocm(stream);
 #else
-  // fast NHWC implementation is a CUDA only feature
+  // fast NHWC implementation is a CUDA/ROCM only feature
   const bool compute_in_nhwc = false;
 #endif
 

@@ -304,3 +304,4 @@ py_library(
         "//tensorflow/python/keras/layers/legacy_rnn:rnn_cell_wrapper_impl",
     ],
 )
+

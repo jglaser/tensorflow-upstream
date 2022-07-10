@@ -114,9 +114,6 @@ cuda_py_test(
     name = "control_flow_ops_test",
     srcs = ["control_flow_ops_test.py"],
     shard_count = 16,
-    tags = [
-        "no_rocm",
-    ],
     deps = [
         ":control_flow_ops",
         ":test_util",

@@ -175,13 +175,18 @@ class SelfAdjointEigV2OpGpu : public AsyncOpKernel {
       Name("SelfAdjointEigV2").Device(DEVICE_GPU).TypeConstraint<Scalar>("T"), \
       (SelfAdjointEigV2OpGpu<Scalar>))
 
+#if GOOGLE_CUDA
 REGISTER(float);
 REGISTER(double);
 REGISTER(complex64);
 REGISTER(complex128);
+#elif TENSORFLOW_USE_ROCM
+REGISTER(std::complex<float>)
+REGISTER(std::complex<double>)
+#endif
 
 #undef REGISTER
 
 }  // namespace tensorflow
 
-#endif  // GOOGLE_CUDA
+#endif  // GOOGLE_CUDA || (TENSORFLOW_USE_ROCM && TF_ROCM_VERSION >= 40500)

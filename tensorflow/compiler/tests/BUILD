@@ -299,7 +299,6 @@ tf_xla_py_test(
     python_version = "PY3",
     tags = [
         "no_pip",  # TODO(b/149738646): fix pip install so these tests run on kokoro pip
-        "no_rocm",
         "optonly",
     ],
     deps = [
@@ -384,7 +383,6 @@ tf_xla_py_test(
     python_version = "PY3",
     tags = [
         "no_pip",  # TODO(b/149738646): fix pip install so these tests run on kokoro pip
-        "no_rocm",
         "optonly",
     ],
     deps = [
@@ -557,7 +555,6 @@ tf_xla_py_test(
     shard_count = 5,
     tags = [
         "no_pip",  # TODO(b/149738646): fix pip install so these tests run on kokoro pip
-        "no_rocm",
         "noasan",
         "nomsan",
         "notsan",
@@ -1068,6 +1065,7 @@ tf_xla_py_test(
     python_version = "PY3",
     shard_count = 5,
     tags = [
+        "no_rocm",
         "no_pip",  # TODO(b/149738646): fix pip install so these tests run on kokoro pip
         "optonly",
     ],
@@ -1834,6 +1832,8 @@ tf_cuda_cc_test(
         "config-cuda-only",
         "no_cuda_asan",  # TODO(b/201651800)
         "no_pip",  # TODO(b/149738646): fix pip install so these tests run on kokoro pip
+        "notap",
+        "no_rocm",
         "requires-gpu-nvidia",
         "no_rocm",  # ROCmSoftwarePlatform #958
     ] + tf_cuda_tests_tags(),
@@ -1855,6 +1855,8 @@ tf_cuda_cc_test(
         "config-cuda-only",
         "no_cuda_asan",  # TODO(b/201651800)
         "no_pip",  # TODO(b/149738646): fix pip install so these tests run on kokoro pip
+        "notap",
+        "no_rocm",
         "requires-gpu-nvidia",
         "no_rocm",  # ROCmSoftwarePlatform #958
     ] + tf_cuda_tests_tags(),

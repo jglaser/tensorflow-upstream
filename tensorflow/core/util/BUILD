@@ -710,6 +710,7 @@ tf_kernel_library(
         "//tensorflow/stream_executor/rocm:rocblas_wrapper",
         "//tensorflow/stream_executor/rocm:rocm_gpu_executor",
         "//tensorflow/stream_executor/rocm:rocsolver_wrapper",
+	"//tensorflow/stream_executor/rocm:hipsolver_wrapper",
     ] + if_rocm([
         "@local_config_rocm//rocm:rocprim",
     ]),
@@ -732,6 +733,7 @@ tf_kernel_library(
         "@local_config_cuda//cuda:cub_headers",
     ]) + if_rocm([
         "//tensorflow/stream_executor/rocm:rocsolver_wrapper",
+	"//tensorflow/stream_executor/rocm:hipsolver_wrapper",
         "//tensorflow/stream_executor/rocm:hipsparse_wrapper",
     ]),
 )

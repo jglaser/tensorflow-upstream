@@ -1067,6 +1067,7 @@ T baseline_nextafter(T from, T to) {
   T res = std::nextafter(from, to);
 #if !defined(MLIR_GENERATED_GPU_KERNELS_ENABLED)
   // The Eigen GPU kernel returns the next normal value if ftz is set.
+  // The above applies to CUDA Eigen kernels only
   if (!std::isnormal(res)) {
     if (res < 0 && res > -1) {                // NOLINT
       return -std::numeric_limits<T>::min();  // NOLINT
