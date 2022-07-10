@@ -736,7 +736,7 @@ StatusOr<std::vector<uint8_t>> EmitModuleToHsaco(
   // Locate lld.
   // TODO(whchung@gmail.com): change to tensorflow::ROCmRoot() after
   // ROCm-Device-Libs PR.
-  std::string lld_path = tensorflow::io::JoinPath("/opt/rocm", "llvm/bin");
+  std::string lld_path = tensorflow::io::JoinPath("/opt/rocm-5.2.0", "llvm/bin");
   auto lld_program = llvm::sys::findProgramByName("ld.lld", {lld_path});
   if (!lld_program) {
     return xla::InternalError("unable to find ld.lld in %s: %s", lld_path,
