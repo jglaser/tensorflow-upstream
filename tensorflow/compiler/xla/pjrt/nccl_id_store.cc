@@ -19,7 +19,11 @@ limitations under the License.
 #include <utility>
 
 #ifdef NCCL_ENABLED
+#if TENSORFLOW_USE_ROCM
+#include "rocm/include/rccl/rccl.h"
+#else
 #include "third_party/nccl/nccl.h"
+#endif
 #endif  // NCCL_ENABLED
 
 #include "tensorflow/compiler/xla/util.h"
@@ -41,10 +45,17 @@ StatusOr<std::string> NcclIdStore::GetNcclUniqueId(
   int primary_node_id = device_to_node_.at(key.devices()[0]);
   if (node_id_ == primary_node_id) {
 #ifdef NCCL_ENABLED
+#if TENSFORFLOW_USE_ROCM
+    rcclUniqueId id;
+    rcclResult_t r = rcclGetUniqueId(&id);
+    TF_RET_CHECK(r == rcclSuccess);
+    id_string = std::string(id.internal, RCCL_UNIQUE_ID_BYTES);
+#else
     ncclUniqueId id;
     ncclResult_t r = ncclGetUniqueId(&id);
     TF_RET_CHECK(r == ncclSuccess);
     id_string = std::string(id.internal, NCCL_UNIQUE_ID_BYTES);
+#endif
     TF_RETURN_IF_ERROR(client_->KeyValueSet(key.ToString(), id_string));
 #else
     return FailedPrecondition("NCCL support was not built into XLA binary.");

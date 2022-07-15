@@ -352,8 +352,8 @@ cc_library(
         "//tensorflow/core:lib_internal",
         "//tensorflow/stream_executor:device_memory",
         "//tensorflow/stream_executor:tf_allocator_adapter",
-    ] + if_cuda([
         ":nccl_id_store",
+    ] + if_cuda([
         "@local_config_cuda//cuda:cuda_headers",
         "//tensorflow/core/common_runtime/gpu:gpu_cudamallocasync_allocator",
         "//tensorflow/stream_executor/cuda:cuda_activation_header",

@@ -36,6 +36,7 @@ limitations under the License.
 
 #ifdef TENSORFLOW_USE_ROCM
 #include "rocm/rocm_config.h"
+#include "tensorflow/compiler/xla/pjrt/nccl_id_store.h"
 #endif  // TENSORFLOW_USE_ROCM
 
 #include "tensorflow/compiler/xla/client/client_library.h"
@@ -382,14 +383,12 @@ Status BuildDistributedDevices(
   }
   gpu_executable_run_options->set_gpu_global_device_ids(
       std::move(gpu_device_ids));
-#ifdef GOOGLE_CUDA
   auto nccl_id_store = std::make_shared<NcclIdStore>(
       node_id, distributed_client, device_to_node);
   gpu_executable_run_options->set_nccl_unique_id_callback(
       [nccl_id_store](const gpu::NcclCliqueKey& key) {
         return nccl_id_store->GetNcclUniqueId(key);
       });
-#endif  // GOOGLE_CUDA
   return OkStatus();
 }
 
